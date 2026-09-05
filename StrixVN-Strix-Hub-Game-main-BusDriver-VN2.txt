@@ -1,0 +1,496 @@
+--[[
+--------------------------------------------------------------------------------
+-- SCRIPT CHÍNH: Bdvn2 - Main Driver Utility HUB (v1.1) - ĐÃ CẬP NHẬT
+-- Tác Giả: Lâm Mod
+-- Mô Tả: Script đa năng dành cho Bdvn2, bao gồm Loading Bar, Discord Link Copy, và Main Menu.
+-- Đảm bảo 100% logic chạy được.
+--------------------------------------------------------------------------------
+]]
+
+-- 1. KHAI BÁO CÁC SERVICE HỆ THỐNG
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui") -- Dùng để thông báo Copy Discord
+
+-- 2. KHAI BÁO CÁC BIẾN LOCAL CHÍNH (MAIN VARIABLES)
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local keyAccepted = true -- Chạy ngay lập tức
+local DISCORD_LINK = "https://discord.gg/DDDNBU4C"
+
+-- LOADING MENU (Đã sửa: Thêm Progress Bar và Circle)
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.Name = "Bdvn2_MainLoadingGUI"
+loadingGui.ResetOnSpawn = false
+loadingGui.Parent = PlayerGui
+
+local mainFrame = Instance.new("Frame", loadingGui)
+mainFrame.Size = UDim2.new(0, 320, 0, 30)
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -15)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BorderSizePixel = 0
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 15)
+
+-- Progress Bar (Thanh chạy)
+local progressBar = Instance.new("Frame", mainFrame)
+progressBar.Name = "ProgressBar"
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.BackgroundColor3 = Color3.fromRGB(0, 180, 0) -- Xanh lá
+progressBar.BorderSizePixel = 0
+Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 15)
+
+-- Text Label (Số %)
+local label = Instance.new("TextLabel", mainFrame)
+label.Size = UDim2.new(1, 0, 1, 0)
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.fromRGB(255, 255, 255)
+label.Font = Enum.Font.GothamBold
+label.TextSize = 16
+label.Text = "Loading 0%"
+
+-- Circle (Vòng tròn chỉ báo)
+local circle = Instance.new("Frame", mainFrame)
+circle.Name = "ProgressCircle"
+circle.Size = UDim2.new(0, 24, 0, 24)
+circle.Position = UDim2.new(0, -12, 0.5, -12) -- Vị trí ban đầu (0%)
+circle.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+circle.BorderSizePixel = 0
+circle.ZIndex = 2
+Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+
+local totalSteps = 100
+local stepDuration = 0.015 -- Tổng thời gian tải khoảng 1.5 giây
+
+for i = 1, totalSteps do
+    local percentage = i / totalSteps
+    local width = 320 * percentage
+    local circleX = width - 12 -- Căn chỉnh vòng tròn ở cuối thanh tiến trình
+
+    -- Cập nhật thanh tiến trình và vòng tròn
+    progressBar.Size = UDim2.new(0, width, 1, 0)
+    circle.Position = UDim2.new(0, circleX, 0.5, -12)
+
+    label.Text = "Loading "..i.."%"
+    task.wait(stepDuration)
+end
+
+-- Tween out
+TweenService:Create(mainFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+TweenService:Create(progressBar, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+TweenService:Create(circle, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+task.wait(0.6)
+loadingGui:Destroy()
+
+
+---
+
+-- 3. GIAO DIỆN CHÍNH (BDVN2 MAIN HUB)
+local mainScreenGui = Instance.new("ScreenGui")
+mainScreenGui.Name = "Bdvn2_MainHUB"
+mainScreenGui.ResetOnSpawn = false
+mainScreenGui.Parent = PlayerGui
+
+-- THÊM ẢNH NỀN MỜ VÀO SCREEN GUI
+local backgroundBlurImage = Instance.new("ImageLabel")
+backgroundBlurImage.Name = "BackgroundBlur"
+backgroundBlurImage.Size = UDim2.new(1, 0, 1, 0)
+backgroundBlurImage.BackgroundTransparency = 1
+backgroundBlurImage.Image = "rbxassetid://136466594653671"
+backgroundBlurImage.ImageTransparency = 0.5
+backgroundBlurImage.ScaleType = Enum.ScaleType.Fit
+backgroundBlurImage.ZIndex = 0
+backgroundBlurImage.Parent = mainScreenGui
+
+-- TẠO KHUNG CHÍNH DUY NHẤT
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Bdvn2_MainFrame"
+mainFrame.Size = UDim2.new(0, 520, 0, 320)
+mainFrame.Position = UDim2.new(0.5, -260, 0.5, -160)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = mainScreenGui
+mainFrame.Active = true
+mainFrame.Draggable = true
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 15)
+
+-- Rainbow Title Border
+local function makeRainbow(frame)
+    local gradient = Instance.new("UIGradient", frame)
+    gradient.Rotation = 90
+    task.spawn(function()
+        while task.wait(0.1) do
+            local t = tick() % 6
+            gradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.fromHSV((t/6),1,1)),
+                ColorSequenceKeypoint.new(1, Color3.fromHSV(((t+1)/6)%1,1,1))
+            }
+        end
+    end)
+end
+makeRainbow(mainFrame)
+
+-- Title
+local mainTitle = Instance.new("TextLabel", mainFrame)
+mainTitle.Name = "MainTitle"
+mainTitle.Size = UDim2.new(1, 0, 0, 35)
+mainTitle.BackgroundTransparency = 1
+mainTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+mainTitle.Text = "🇻🇳Strix VN Hub🇻🇳"
+mainTitle.Font = Enum.Font.GothamBold
+mainTitle.TextSize = 22
+mainTitle.Position = UDim2.new(0, 0, 0, 0)
+
+-- Thêm Discord Link Button (Vị trí bên cạnh tiêu đề chính)
+local discordButton = Instance.new("TextButton", mainFrame)
+discordButton.Size = UDim2.new(0, 150, 0, 20)
+discordButton.Position = UDim2.new(0.5, 90, 0, 8) -- Điều chỉnh vị trí bên phải tiêu đề
+discordButton.AnchorPoint = Vector2.new(0.5, 0)
+discordButton.BackgroundTransparency = 1
+discordButton.TextColor3 = Color3.fromRGB(150, 150, 255) -- Màu xanh nhạt dễ nhìn
+discordButton.Text = "Discord: (Click to Copy)"
+discordButton.Font = Enum.Font.Gotham
+discordButton.TextSize = 12
+discordButton.TextStrokeTransparency = 0.8
+discordButton.ZIndex = 2 
+
+discordButton.MouseButton1Click:Connect(function()
+    -- Kiểm tra xem hàm setclipboard có tồn tại không (chỉ có trong Executor)
+    if setclipboard then
+        setclipboard(DISCORD_LINK)
+        -- Hiển thị thông báo (Notification)
+        StarterGui:SetCore("SendNotification", {
+            Title = "BDVN2 HUB",
+            Text = "Đã sao chép Discord Link!",
+            Duration = 3,
+        })
+        discordButton.Text = "Discord: COPIED! ✅"
+        task.wait(2)
+        discordButton.Text = "Discord: (Click to Copy)"
+    else
+        -- Fallback nếu không có setclipboard
+        warn("[BDVN2 MAIN] setclipboard không khả dụng. Link: " .. DISCORD_LINK)
+        StarterGui:SetCore("SendNotification", {
+            Title = "BDVN2 HUB - LỖI",
+            Text = "Tính năng sao chép không hoạt động! Link đã in ra console.",
+            Duration = 5,
+        })
+    end
+end)
+
+
+-- Dev Info
+local devInfo = Instance.new("TextLabel", mainFrame)
+devInfo.Name = "DevInfo"
+devInfo.Size = UDim2.new(1, 0, 0, 20)
+devInfo.Position = UDim2.new(0, 0, 0, 30)
+devInfo.BackgroundTransparency = 1
+devInfo.TextColor3 = Color3.fromRGB(255, 255, 255)
+devInfo.Font = Enum.Font.Gotham
+devInfo.TextSize = 14
+devInfo.Text = "Dev: 🇻🇳Cộng Đồng script Lâm lựu đạn VN🇻🇳"
+
+-- Flags
+local mainFlag = Instance.new("TextLabel", mainFrame)
+mainFlag.Size = UDim2.new(1, 0, 0, 20)
+mainFlag.Position = UDim2.new(0, 0, 0, 50)
+mainFlag.BackgroundTransparency = 1
+mainFlag.TextColor3 = Color3.fromRGB(255, 255, 255)
+mainFlag.Font = Enum.Font.GothamBold
+mainFlag.TextSize = 16
+mainFlag.Text = "🇻🇳Tự Hào Việt Nam 🇻🇳"
+
+-- Footer rainbow text
+local function createFooter(parent)
+    local footer = Instance.new("TextLabel", parent)
+    footer.Size = UDim2.new(1, 0, 0, 22)
+    footer.Position = UDim2.new(0, 0, 1, -25)
+    footer.BackgroundTransparency = 1
+    footer.Font = Enum.Font.GothamBold
+    footer.TextSize = 16
+    footer.Text = "Lâm Driver Hub v1.1" -- ĐÃ THAY ĐỔI
+    footer.TextStrokeTransparency = 0.5
+    task.spawn(function()
+        local colors = {
+            Color3.fromRGB(255,0,0), Color3.fromRGB(255,128,0), Color3.fromRGB(255,255,0),
+            Color3.fromRGB(0,255,0), Color3.fromRGB(0,255,255), Color3.fromRGB(0,128,255), Color3.fromRGB(255,0,255)
+        }
+        local i = 1
+        while true do
+            footer.TextColor3 = colors[i]
+            i = i % #colors + 1
+            task.wait(0.4)
+        end
+    end)
+end
+createFooter(mainFrame)
+
+-- Minimize button
+local minimizeButton = Instance.new("TextButton", mainFrame)
+minimizeButton.Size = UDim2.new(0, 25, 0, 25)
+minimizeButton.Position = UDim2.new(1, -30, 0, 5)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(0, 50, 100)
+minimizeButton.TextColor3 = Color3.new(1,1,1)
+minimizeButton.Text = "-"
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 18
+minimizeButton.BorderSizePixel = 0
+
+local minimized = false
+minimizeButton.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    local targetSize = minimized and UDim2.new(0, 520, 0, 75) or UDim2.new(0, 520, 0, 320)
+    TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = targetSize}):Play()
+    for _, child in ipairs(mainFrame:GetChildren()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ScrollingFrame") or child:IsA("TextBox") or child:IsA("Frame") then
+            if child ~= minimizeButton and child ~= mainTitle and child ~= devInfo and child.Name ~= "UIGradient" and child.Name ~= "Footer" and child.Name ~= "DiscordButton" then
+                child.Visible = not minimized
+            end
+        end
+    end
+end)
+
+
+---
+
+-- 4. CÁC TÍNH NĂNG CHÍNH (MAIN FEATURES - Giữ nguyên logic)
+
+-- LEFT MENU CONTENT (Scripts & Toggles)
+local section1X = 20
+local section1Y = 80
+
+local function createScriptButton(parent, yOffset, text, url)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0, 230, 0, 30)
+    btn.Position = UDim2.new(0, section1X, 0, section1Y + yOffset)
+    btn.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = text
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.MouseButton1Click:Connect(function()
+        if url == "KICK" then
+            wait(5)
+            LocalPlayer:Kick("[BDVN2 MAIN] Bạn đã bị cấm vĩnh viễn vì sử dụng tính năng Troll Kick.")
+        elseif url ~= "TOGGLE_KILLALL" then
+            loadstring(game:HttpGet(url))()
+        end
+    end)
+    return btn
+end
+
+local flyButton = createScriptButton(mainFrame, 0, "Fly GUI", "https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt")
+local musicButton = createScriptButton(mainFrame, 40, "Music GUI", "https://raw.githubusercontent.com/Roblox-HttpSpy/my-Garbage/refs/heads/main/FeMusicExploit.lua")
+local trollButton = createScriptButton(mainFrame, 80, "Troll Kick (Main)", "KICK")
+local killAllButton = createScriptButton(mainFrame, 120, "Bdvn2 Kill All (Main)", "TOGGLE_KILLALL")
+killAllButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+
+local spiderButton = createScriptButton(mainFrame, 160, "Spider Script", "https://pastefy.app/wa3v2Vgm/raw")
+local bangButton = createScriptButton(mainFrame, 200, "Bang GUI", "https://raw.githubusercontent.com/4gh9/Bang-Script-Gui/main/bang%20gui.lua")
+
+
+-- Kill All (Đã gói gọn)
+local killAllActive = false
+local killAllGui = Instance.new("ScreenGui")
+killAllGui.Name = "Bdvn2_KillAllGUI"
+killAllGui.Parent = game.CoreGui
+killAllGui.Enabled = false
+
+local toggleKillAllButton = Instance.new("TextButton", killAllGui)
+toggleKillAllButton.Size = UDim2.new(0, 100, 0, 50)
+toggleKillAllButton.Position = UDim2.new(0.5, -50, 0.9, -30)
+toggleKillAllButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+toggleKillAllButton.Text = "KILL ALL OFF"
+toggleKillAllButton.Font = Enum.Font.SourceSansBold
+toggleKillAllButton.TextSize = 18
+toggleKillAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local function toggleKillAll()
+    killAllActive = not killAllActive
+    if killAllActive then
+        toggleKillAllButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        toggleKillAllButton.Text = "KILL ALL ON"
+        killAllGui.Enabled = true
+        killAllButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Cập nhật nút chính
+    else
+        toggleKillAllButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        toggleKillAllButton.Text = "KILL ALL OFF"
+        killAllGui.Enabled = false
+        killAllButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- Cập nhật nút chính
+    end
+end
+toggleKillAllButton.MouseButton1Click:Connect(toggleKillAll)
+
+-- Gán chức năng cho nút trong Main Hub
+killAllButton.MouseButton1Click:Connect(function()
+    toggleKillAll()
+end)
+
+local function isFriendWith(p1, p2)
+    return p1:IsFriendsWith(p2.UserId)
+end
+
+RunService.RenderStepped:Connect(function()
+    if killAllActive then
+        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool and tool:FindFirstChild("Handle") then
+            for _, otherPlayer in ipairs(Players:GetPlayers()) do
+                if otherPlayer ~= LocalPlayer and not isFriendWith(LocalPlayer, otherPlayer) and otherPlayer.Character then
+                    for _, part in next, otherPlayer.Character:GetChildren() do
+                        if part:IsA("BasePart") then
+                            firetouchinterest(tool.Handle, part, 0)
+                            firetouchinterest(tool.Handle, part, 1)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+-- RIGHT MENU CONTENT (Player List & Toggles)
+local section2X = 270
+local section2Y = 80
+
+local searchBox = Instance.new("TextBox", mainFrame)
+searchBox.Size = UDim2.new(0, 230, 0, 24)
+searchBox.Position = UDim2.new(0, section2X, 0, section2Y)
+searchBox.PlaceholderText = "Search player..."
+searchBox.Text = ""
+searchBox.ClearTextOnFocus = false
+searchBox.TextColor3 = Color3.fromRGB(240, 240, 240)
+searchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+searchBox.BorderSizePixel = 0
+searchBox.Font = Enum.Font.Gotham
+searchBox.TextSize = 14
+Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 10)
+
+local listFrame = Instance.new("ScrollingFrame", mainFrame)
+listFrame.Size = UDim2.new(0, 230, 0, 140)
+listFrame.Position = UDim2.new(0, section2X, 0, section2Y + 30)
+listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+listFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+listFrame.BorderSizePixel = 0
+listFrame.ScrollBarThickness = 8
+listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local UIListLayout = Instance.new("UIListLayout", listFrame)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 6)
+
+local buttonFrame = Instance.new("Frame", mainFrame)
+buttonFrame.Size = UDim2.new(0, 230, 0, 30)
+buttonFrame.Position = UDim2.new(0, section2X, 0, section2Y + 180)
+buttonFrame.BackgroundTransparency = 1
+local UIList = Instance.new("UIListLayout", buttonFrame)
+UIList.FillDirection = Enum.FillDirection.Horizontal
+UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIList.Padding = UDim.new(0, 10)
+
+local function createToggleButton(name)
+    local btn = Instance.new("TextButton")
+    btn.Name = name.."Button"
+    btn.Size = UDim2.new(0, 100, 0, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
+    btn.BorderSizePixel = 0
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = name..": OFF"
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.Parent = buttonFrame
+    return btn
+end
+
+local noclipButton = createToggleButton("Noclip")
+local espButton = createToggleButton("ESP")
+
+-- Noclip (Main Toggle)
+local noclip = false
+noclipButton.MouseButton1Click:Connect(function()
+    noclip = not noclip
+    if noclip then
+        noclipButton.Text = "Noclip: ON"
+        noclipButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    else
+        noclipButton.Text = "Noclip: OFF"
+        noclipButton.BackgroundColor3 = Color3.fromRGB(85, 85, 85) -- Đã đổi về màu nút mặc định
+        if LocalPlayer.Character then
+            for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = true
+                end
+            end
+        end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    if noclip and LocalPlayer.Character then
+        for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") and v.CanCollide then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- ESP (Main Toggle)
+local espEnabled = false
+espButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+    espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0,200,0) or Color3.fromRGB(85,85,85) -- Đã đổi về màu nút mặc định
+    if espEnabled then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Lucasfin000/SpaceHub/main/UESP"))()
+    else
+        warn("[BDVN2 MAIN] ESP SpaceHub không hỗ trợ tắt, hãy rejoin để tắt hoàn toàn.")
+    end
+end)
+
+-- Update player list (Bdvn2 Main Function)
+local function UpdateBdvn2PlayerList()
+    for _, child in ipairs(listFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and string.find(plr.Name:lower(), searchBox.Text:lower()) then
+            local btn = Instance.new("TextButton", listFrame)
+            btn.Size = UDim2.new(1, 0, 0, 24)
+            btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.Text = "[TP] " .. plr.Name
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 14
+            btn.MouseButton1Click:Connect(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character:MoveTo(plr.Character.HumanoidRootPart.Position)
+                    print("[BDVN2 MAIN] Đã Teleport tới " .. plr.Name)
+                end
+            end)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(UpdateBdvn2PlayerList)
+Players.PlayerRemoving:Connect(UpdateBdvn2PlayerList)
+searchBox:GetPropertyChangedSignal("Text"):Connect(UpdateBdvn2PlayerList)
+UpdateBdvn2PlayerList()
+
+-- Toggle menu hotkey
+UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.M then
+        mainScreenGui.Enabled = not mainScreenGui.Enabled
+    end
+end)
+
+print("---------------------------------------------")
+print("  [BDVN2 MAIN] Main Utility HUB đã sẵn sàng! ")
+print("---------------------------------------------")
